@@ -88,10 +88,18 @@ class Tape:
         self._min = -origin
         self._max = (len(content) - 1) - origin
 
-    def region(self, idx: int, span: int = 5) -> list[Symbol]:
+    def region(
+            self,
+            idx: int,
+            span: int = 5,
+    ) -> tuple[list[Symbol], Symbol, list[Symbol]]:
         self._ensure_exists(idx-span)
         self._ensure_exists(idx+span)
-        return self._content[idx+self._origin-span:idx+self._origin+span+1]
+        return (
+            self._content[idx+self._origin-span:idx+self._origin],
+            self._content[idx+self._origin],
+            self._content[idx+self._origin+1:idx+self._origin+span+1],
+        )
 
     def __getitem__(self, idx: int) -> Symbol:
         self._ensure_exists(idx)
