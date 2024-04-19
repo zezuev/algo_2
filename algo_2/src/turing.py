@@ -98,7 +98,8 @@ class Tape:
             *,
             origin: int = 0,
     ):
-        self.content = content or [space]
+        content = content or [space]
+        self.content = content
         self.space = space
         self._origin = origin
 
