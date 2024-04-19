@@ -1,5 +1,6 @@
 
 from dataclasses import dataclass
+from typing import overload
 
 
 type State = int | str
@@ -74,11 +75,52 @@ class TuringMachine:
 
 class Tape:
 
-    def __init__(self, content: list[Symbol], position: int | None = None):
-        self._content = content
-        self._position = position or 0
+    @overload
+    def __init__(self, content: list[Symbol], space: Symbol): ...
+    @overload
+    def __init__(self, content: list[Symbol], space: Symbol, origin: int = 0): ...
 
-    def __getitem__(self, idx: int) -> Symbol: ...
+    def __init__(self, content: list[Symbol], space: Symbol, origin: int = 0):
+        self._content = content
+        self._space = space
+        self._origin = origin
+
+        self._min = -origin
+        self._max = (len(content) - 1) - origin
+
+    def region(self, idx: int, span: int = 5) -> list[Symbol]:
+        self._ensure_exists(idx-span)
+        self._ensure_exists(idx+span)
+        return self._content[idx+self._origin-span:idx+self._origin+span+1]
+
+    def __getitem__(self, idx: int) -> Symbol:
+        self._ensure_exists(idx)
+        return self._content[idx+self._origin]
+
+    def __setitem__(self, idx: int, symbol: Symbol):
+        self._ensure_exists(idx)
+        self._content[idx+self._origin] = symbol
+
+    def _ensure_exists(self, idx: int):
+        if idx < self._min:
+            self._extend_left()
+        elif idx > self._max:
+            self._extend_right()
+
+    def _extend_left(self):
+        current_len = len(self._content)
+        self._content[:0] = [self._space for _ in range(current_len)]
+        self._min -= current_len
+        self._origin += current_len
+
+    def _extend_right(self):
+        current_len = len(self._content)
+        self._content += [self._space for _ in range(current_len)]
+        self._max += current_len
+
+    @property
+    def content(self) -> list[Symbol]:
+        return self._content
 
 
 class Run:
