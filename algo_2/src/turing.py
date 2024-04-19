@@ -1,11 +1,13 @@
 
 from dataclasses import dataclass
-from typing import overload
+from typing import Literal, overload
 
 
 type State = int | str
 type Symbol = int | str
-type Rule = dict[Symbol, State]
+type Direction = Literal["L", "N", "R"]
+type Action = tuple[State, Symbol, Direction]
+type Rule = dict[Symbol, Action]
 type Ruleset = dict[State, Rule]
 
 
@@ -22,6 +24,9 @@ class TuringMachine:
     def __post_init__(self):
         self._validate_symbols(self.sigma, self.gamma, self.space, self.rules)
         self._validate_states(self.q, self.start, self.finish, self.rules)
+
+    def action(self, state: State, symbol: Symbol) -> Action:
+        return self.rules[state][symbol]
 
     @staticmethod
     def _validate_symbols(
@@ -66,7 +71,7 @@ class TuringMachine:
         for state, rule in rules.items():
             if state not in q_set:
                 unknown_states.add(state)
-            unknown_states.update(set(rule.values()).difference(q_set))
+            unknown_states.update(set(v[0] for v in rule.values()).difference(q_set))
         raise ValueError(
             "The following states are referenced in the ruleset but are not present "
             f"in the gamma alphabet: {", ".join(unknown_states)}."
@@ -133,4 +138,12 @@ class Tape:
 
 class Run:
 
-    def __init__(self, tm: TuringMachine, tape: Tape): ...
+    def __init__(self, tm: TuringMachine, tape: Tape):
+        self._tm = tm
+        self._tape = tape
+        self._idx = 0
+        self._state = tm.start
+
+    def step(self):
+
+        ...
