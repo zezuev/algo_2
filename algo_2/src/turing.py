@@ -216,3 +216,6 @@ class Run:
 
     def done(self) -> bool:
         return self.state == self.tm.finish
+
+    def __bool__(self):
+        return not self.done()
