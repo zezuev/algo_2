@@ -127,6 +127,9 @@ class Tape:
         self._ensure_exists(idx)
         self.content[idx+self._origin] = symbol
 
+    def __eq__(self, other):
+        raise NotImplementedError("Comparison of Tapes not yet implemented.")
+
     def _ensure_exists(self, idx: int):
         while idx < self._min:
             self._extend_left()
