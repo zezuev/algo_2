@@ -83,12 +83,22 @@ class TuringMachine:
 class Tape:
 
     @overload
-    def __init__(self, content: list[Symbol], space: Symbol): ...
+    def __init__(self, space: Symbol): ...
     @overload
-    def __init__(self, content: list[Symbol], space: Symbol, origin: int = 0): ...
+    def __init__(self, space: Symbol, *, origin: int): ...
+    @overload
+    def __init__(self, space: Symbol, content: list[Symbol]): ...
+    @overload
+    def __init__(self, space: Symbol, content: list[Symbol], *, origin: int): ...
 
-    def __init__(self, content: list[Symbol], space: Symbol, origin: int = 0):
-        self.content = content
+    def __init__(
+            self,
+            space: Symbol,
+            content: list[Symbol] | None = None,
+            *,
+            origin: int = 0,
+    ):
+        self.content = content or [space]
         self.space = space
         self._origin = origin
 
