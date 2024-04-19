@@ -9,6 +9,7 @@ type Direction = Literal["L", "N", "R"]
 type Action = tuple[State, Symbol, Direction]
 type Rule = dict[Symbol, Action]
 type Ruleset = dict[State, Rule]
+type TapeView = tuple[list[Symbol], Symbol, list[Symbol]]
 
 
 @dataclass
@@ -98,7 +99,7 @@ class Tape:
             self,
             idx: int,
             span: int = 5,
-    ) -> tuple[list[Symbol], Symbol, list[Symbol]]:
+    ) -> TapeView:
         self._ensure_exists(idx-span)
         self._ensure_exists(idx+span)
         return (
@@ -116,9 +117,9 @@ class Tape:
         self.content[idx+self._origin] = symbol
 
     def _ensure_exists(self, idx: int):
-        if idx < self._min:
+        while idx < self._min:
             self._extend_left()
-        elif idx > self._max:
+        while idx > self._max:
             self._extend_right()
 
     def _extend_left(self):
@@ -150,8 +151,8 @@ class Run:
             elif direction == "R":
                 self.idx += 1
 
-    def display(self, span: int = 5) -> tuple[list[Symbol], Symbol, list[Symbol]]:
-        return self.tape.display(self.idx, span)
+    def display(self, span: int = 5) -> tuple[State, TapeView]:
+        return (self.state, self.tape.display(self.idx, span))
 
     def done(self) -> bool:
         return self.state == self.tm.finish
