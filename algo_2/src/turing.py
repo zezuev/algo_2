@@ -1,6 +1,6 @@
 
 from dataclasses import dataclass
-from typing import Literal, overload
+from typing import Literal, Self, overload
 
 
 type State = int | str
@@ -27,7 +27,42 @@ class TuringMachine:
         self._validate_states(self.q, self.start, self.finish, self.rules)
 
     def action(self, state: State, symbol: Symbol) -> Action:
+        if state not in self.rules:
+            raise ValueError(f"State {state!r} is not in q.")
+        if symbol not in self.rules[state]:
+            raise ValueError(
+                f"No action defined for symbol {symbol!r} in state {state!r}."
+            )
         return self.rules[state][symbol]
+
+    @property
+    def goedel(self) -> str:
+        q_map = dict(zip(self.q, range(1, len(self.q)+1)))
+        gamma_map = dict(zip(self.gamma, range(1, len(self.gamma)+1)))
+        d_map = {"L": 1, "N": 2, "R": 3}
+
+        goedel = ""
+        for q in self.q:
+            if q == self.finish:
+                continue
+
+            goedel += "11"
+            for s in self.gamma:
+                q_next, s_next, d = self.action(q, s)
+
+                goedel += "1".join((
+                    "0"*q_map[q],
+                    "0"*gamma_map[s],
+                    "0"*q_map[q_next],
+                    "0"*gamma_map[s_next],
+                    "0"*d_map[d],
+                ))
+        goedel += "111"
+        return goedel
+
+    @classmethod
+    def from_goedel(cls, goedel: str, q: list[State], gamma: list[Symbol]) -> Self:
+        raise NotImplementedError
 
     @staticmethod
     def _validate_symbols(
@@ -78,6 +113,17 @@ class TuringMachine:
                 "The following states are referenced in the ruleset but are not "
                 f"present in the gamma alphabet: {", ".join(unknown_states)}."
             )
+
+    @staticmethod
+    def _validate_ruleset(
+        q: list[State],
+        gamma: list[Symbol],
+        finish: State,
+        rules: Ruleset,
+        *,
+        strict: bool = False,
+    ):
+        raise NotImplementedError
 
 
 class Tape:
