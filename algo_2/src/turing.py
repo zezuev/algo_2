@@ -72,10 +72,11 @@ class TuringMachine:
             if state not in q_set:
                 unknown_states.add(state)
             unknown_states.update(set(v[0] for v in rule.values()).difference(q_set))
-        raise ValueError(
-            "The following states are referenced in the ruleset but are not present "
-            f"in the gamma alphabet: {", ".join(unknown_states)}."
-        )
+        if unknown_states:
+            raise ValueError(
+                "The following states are referenced in the ruleset but are not "
+                f"present in the gamma alphabet: {", ".join(unknown_states)}."
+            )
 
 
 class Tape:
@@ -86,14 +87,14 @@ class Tape:
     def __init__(self, content: list[Symbol], space: Symbol, origin: int = 0): ...
 
     def __init__(self, content: list[Symbol], space: Symbol, origin: int = 0):
-        self._content = content
-        self._space = space
+        self.content = content
+        self.space = space
         self._origin = origin
 
         self._min = -origin
         self._max = (len(content) - 1) - origin
 
-    def region(
+    def display(
             self,
             idx: int,
             span: int = 5,
@@ -101,18 +102,18 @@ class Tape:
         self._ensure_exists(idx-span)
         self._ensure_exists(idx+span)
         return (
-            self._content[idx+self._origin-span:idx+self._origin],
-            self._content[idx+self._origin],
-            self._content[idx+self._origin+1:idx+self._origin+span+1],
+            self.content[idx+self._origin-span:idx+self._origin],
+            self.content[idx+self._origin],
+            self.content[idx+self._origin+1:idx+self._origin+span+1],
         )
 
     def __getitem__(self, idx: int) -> Symbol:
         self._ensure_exists(idx)
-        return self._content[idx+self._origin]
+        return self.content[idx+self._origin]
 
     def __setitem__(self, idx: int, symbol: Symbol):
         self._ensure_exists(idx)
-        self._content[idx+self._origin] = symbol
+        self.content[idx+self._origin] = symbol
 
     def _ensure_exists(self, idx: int):
         if idx < self._min:
@@ -121,29 +122,36 @@ class Tape:
             self._extend_right()
 
     def _extend_left(self):
-        current_len = len(self._content)
-        self._content[:0] = [self._space for _ in range(current_len)]
+        current_len = len(self.content)
+        self.content[:0] = [self.space for _ in range(current_len)]
         self._min -= current_len
         self._origin += current_len
 
     def _extend_right(self):
-        current_len = len(self._content)
-        self._content += [self._space for _ in range(current_len)]
+        current_len = len(self.content)
+        self.content += [self.space for _ in range(current_len)]
         self._max += current_len
-
-    @property
-    def content(self) -> list[Symbol]:
-        return self._content
 
 
 class Run:
 
     def __init__(self, tm: TuringMachine, tape: Tape):
-        self._tm = tm
-        self._tape = tape
-        self._idx = 0
-        self._state = tm.start
+        self.tm = tm
+        self.tape = tape
+        self.idx = 0
+        self.state = tm.start
 
     def step(self):
+        if not self.done():
+            action = self.tm.action(self.state, self.tape[self.idx])
+            self.state, self.tape[self.idx], direction = action
+            if direction == "L":
+                self.idx -= 1
+            elif direction == "R":
+                self.idx += 1
 
-        ...
+    def display(self, span: int = 5) -> tuple[list[Symbol], Symbol, list[Symbol]]:
+        return self.tape.display(self.idx, span)
+
+    def done(self) -> bool:
+        return self.state == self.tm.finish
