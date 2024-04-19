@@ -1,5 +1,4 @@
 
-from dataclasses import dataclass
 from typing import Literal, Self, overload
 
 
@@ -12,19 +11,32 @@ type Ruleset = dict[State, Rule]
 type TapeView = tuple[list[Symbol], Symbol, list[Symbol]]
 
 
-@dataclass
 class TuringMachine:
-    q: list[State]
-    sigma: list[Symbol]
-    gamma: list[Symbol]
-    space: Symbol
-    start: State
-    finish: State
-    rules: Ruleset
 
-    def __post_init__(self):
-        self._validate_symbols(self.sigma, self.gamma, self.space, self.rules)
-        self._validate_states(self.q, self.start, self.finish, self.rules)
+    def __init__(
+            self,
+            q: list[State],
+            sigma: list[Symbol],
+            gamma: list[Symbol],
+            space: Symbol,
+            start: State,
+            finish: State,
+            rules: Ruleset,
+            *,
+            strict: bool = False,
+    ):
+        self._validate_symbols(sigma, gamma, space, rules)
+        self._validate_states(q, start, finish, rules)
+        if strict:
+            self._validate_ruleset(q, gamma, finish, rules)
+
+        self.q = q
+        self.sigma = sigma
+        self.gamma = gamma
+        self.space = space
+        self.start = start
+        self.finish = finish
+        self.rules = rules
 
     def action(self, state: State, symbol: Symbol) -> Action:
         if state not in self.rules:
@@ -120,10 +132,29 @@ class TuringMachine:
         gamma: list[Symbol],
         finish: State,
         rules: Ruleset,
-        *,
-        strict: bool = False,
     ):
-        raise NotImplementedError
+        nonterminal_q = set(q)
+        nonterminal_q.remove(finish)
+
+        missing_states = nonterminal_q.difference(rules.keys())
+        if missing_states:
+            raise ValueError(
+                "The following states are not accounted for in the ruleset: "
+                f"{", ".join(missing_states)}."
+            )
+
+        gamma_set = set(gamma)
+        missing_rules: set[tuple[State, Symbol]] = set()
+        for state, rule in rules.items():
+            missing_rules.update(
+                (state, symbol)
+                for symbol in gamma_set.difference(rule.keys())
+            )
+        if missing_rules:
+            raise ValueError(
+                "The following rules are missing in the ruleset: "
+                f"{", ".join(str(r) for r in missing_rules)}"
+            )
 
 
 class Tape:
