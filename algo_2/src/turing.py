@@ -1,9 +1,11 @@
 
 from typing import Literal, Self, overload
+from itertools import product
 
 
 type State = int | str
 type Symbol = int | str
+type GoedelNumber = str
 type Direction = Literal["L", "N", "R"]
 type Action = tuple[State, Symbol, Direction]
 type Rule = dict[Symbol, Action]
@@ -48,33 +50,57 @@ class TuringMachine:
         return self.rules[state][symbol]
 
     @property
-    def goedel(self) -> str:
+    def goedel(self) -> GoedelNumber:
         q_map = dict(zip(self.q, range(1, len(self.q)+1)))
         gamma_map = dict(zip(self.gamma, range(1, len(self.gamma)+1)))
         d_map = {"L": 1, "N": 2, "R": 3}
 
-        goedel = ""
-        for q in self.q:
-            if q == self.finish:
-                continue
+        def goedel_part(state: State, symbol: Symbol) -> str:
+            q_next, s_next, d = self.action(state, symbol)
+            return "11" + "1".join((
+                "0"*q_map[state],
+                "0"*gamma_map[symbol],
+                "0"*q_map[q_next],
+                "0"*gamma_map[s_next],
+                "0"*d_map[d],
+            ))
 
-            goedel += "11"
-            for s in self.gamma:
-                q_next, s_next, d = self.action(q, s)
-
-                goedel += "1".join((
-                    "0"*q_map[q],
-                    "0"*gamma_map[s],
-                    "0"*q_map[q_next],
-                    "0"*gamma_map[s_next],
-                    "0"*d_map[d],
-                ))
-        goedel += "111"
-        return goedel
+        parts = [
+            goedel_part(state, symbol)
+            for state, symbol in product(self.q, self.gamma)
+            if state != self.finish
+        ]
+        return "".join(parts) + "111"
 
     @classmethod
-    def from_goedel(cls, goedel: str, q: list[State], gamma: list[Symbol]) -> Self:
-        raise NotImplementedError
+    def from_goedel(
+            cls,
+            goedel: GoedelNumber,
+            q: list[State],
+            sigma: list[Symbol],
+            gamma: list[Symbol],
+            space: Symbol,
+            start: State,
+            finish: State,
+    ) -> Self:
+        q_map: dict[int, State] = dict(zip(range(1, len(q)+1), q))
+        gamma_map: dict[int, Symbol] = dict(zip(range(1, len(gamma)+1), gamma))
+        d_map: dict[int, Direction] = {1: "L", 2: "N", 3: "R"}
+
+        rules: Ruleset = {}
+        goedel = goedel[2:-3]
+        parts = goedel.split("11")
+        for part in parts:
+            i, j, k, l, m = [len(x) for x in part.split("1")]
+            state = q_map[i]
+            symbol = gamma_map[j]
+            next_state = q_map[k]
+            next_symbol = gamma_map[l]
+            direction = d_map[m]
+
+            rules.setdefault(state, {})[symbol] = (next_state, next_symbol, direction)
+
+        return cls(q, sigma, gamma, space, start, finish, rules)
 
     @staticmethod
     def _validate_symbols(
@@ -160,11 +186,7 @@ class TuringMachine:
 class Tape:
 
     @overload
-    def __init__(self, space: Symbol): ...
-    @overload
     def __init__(self, space: Symbol, *, origin: int): ...
-    @overload
-    def __init__(self, space: Symbol, content: list[Symbol]): ...
     @overload
     def __init__(self, space: Symbol, content: list[Symbol], *, origin: int): ...
 
@@ -183,11 +205,7 @@ class Tape:
         self._min = -origin
         self._max = (len(content) - 1) - origin
 
-    def display(
-            self,
-            idx: int,
-            span: int = 5,
-    ) -> TapeView:
+    def display(self, idx: int, span: int = 5) -> TapeView:
         self._ensure_exists(idx-span)
         self._ensure_exists(idx+span)
         return (
@@ -206,6 +224,9 @@ class Tape:
 
     def __eq__(self, other):
         raise NotImplementedError("Comparison of Tapes not yet implemented.")
+
+    def __len__(self):
+        raise NotImplementedError
 
     def _ensure_exists(self, idx: int):
         while idx < self._min:
@@ -241,6 +262,10 @@ class Run:
                 self.idx -= 1
             elif direction == "R":
                 self.idx += 1
+
+    def finish(self):
+        while not self.done():
+            self.step()
 
     def display(self, span: int = 5) -> tuple[State, TapeView]:
         return (self.state, self.tape.display(self.idx, span))
